@@ -1,0 +1,126 @@
+\ProvidesPackage{VerticallyStackedBox}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% This Block can draw simple block of boxes with custom colors.
+% Can be used for conv, deconv etc
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\tikzset{VerticallyStackedBox/.pic={\tikzset{/block/.cd,#1}
+
+        \tikzstyle{box}=[every edge/.append style={pic actions, densely dashed, opacity=.7},fill opacity=\opacity, pic actions,fill=\fill]
+
+        \tikzstyle{band}=[every edge/.append style={pic actions, densely dashed, opacity=.7},fill opacity=\bandopacity, pic actions,fill=\bandfill,draw=\bandfill]
+
+        \pgfmathsetmacro{\x}{\cubex*\scale}
+        \pgfmathsetmacro{\z}{\cubez*\scale}
+
+        %Multiple concatenated boxes
+        \foreach[count=\i,%
+                 evaluate=\i as \ylabel using {array({\boxlabels},\i-1)},%
+                 evaluate=\unscaledy as \k using {\unscaledy*\scale+\prev}, remember=\k as \prev (initially 0)]
+                 \unscaledy in \cubey
+        {
+            \pgfmathsetmacro{\y}{\unscaledy*\scale}
+            \coordinate (a)     at (-\x/2   , \k , \z/2);
+            \coordinate (b)     at (-\x/2   ,\k-\y , \z/2);
+            \coordinate (c)     at (\x/2      ,\k-\y , \z/2);
+            \coordinate (d)     at (\x/2      , \k , \z/2);
+            \coordinate (e)     at (\x/2      , \k ,-\z/2);
+            \coordinate (f)     at (\x/2      ,\k-\y ,-\z/2);
+            \coordinate (g)     at (-\x/2   ,\k-\y ,-\z/2);
+            \coordinate (h)     at (-\x/2   , \k ,-\z/2);
+
+            \draw [box]
+                (a) -- (b) -- (c) -- (d) -- cycle
+                (c) -- (d) -- (e) -- (f) -- cycle;
+            %dotted edges
+            \draw [box]
+                (f) edge (g)
+                (b) edge (g)
+                (h) edge (g);
+
+            %draw edges again which were covered by band
+            % \draw [box,fill opacity=0]
+            %     (d) -- (a) -- (b) -- (c) -- cycle
+            %     (d) -- (a) -- (h) -- (e) -- cycle;
+
+            \path (a) edge ["\ylabel"',midway] (b);
+
+            \xdef\Lasty{\k} %\k persists as \Lasty after loop
+        }%Loop ends
+        \draw [box] (a) -- (d) -- (e) -- (h) -- cycle; %North face of last box
+
+        \coordinate (a1) at (-\x/2 , \y , \z/2);
+        \coordinate (b1) at (-\x/2 , 0 , \z/2);
+        \coordinate (c1) at (\x/2 ,0 , \z/2);
+        \coordinate (f1) at (\x/2 , 0 , -\z/2);
+        \coordinate (g1) at (-\x/2 ,0 , -\z/2);
+        \tikzstyle{depthlabel}=[pos=0,text width=14*\z,text centered,sloped]
+
+        \path (c) edge ["\small\zlabels"',depthlabel](f); %depth label
+        \path (b1) edge ["\xlabels",midway] (c1);  %height label
+
+        \tikzstyle{captionlabel}=[text width=70,text centered]
+        \path (0,-\y/5,\z/2) + (0,-0.5, 0) coordinate (cap)
+        edge ["\textcolor{black}{ \bf \caption}"',captionlabel] (cap); %Block caption/pic object label
+
+        \coordinate (\name-south)   at (0,0,0) ;
+        \coordinate (\name-east)   at (\x/2, \Lasty/2,0) ;
+        \coordinate (\name-north)  at (0,\Lasty,0);
+        \coordinate (\name-west)  at (-\x/2,\Lasty/2,0);
+        \coordinate (\name-anchor) at (0, \Lasty/2,0) ;
+
+        \coordinate (\name-near) at (0,\Lasty/2,\z/2);
+        \coordinate (\name-far)  at (0,\Lasty/2,-\z/2);
+
+        \coordinate (\name-nearwest) at (-\x/2,\Lasty/2,\z/2);
+        \coordinate (\name-neareast) at (\x/2, \Lasty/2,\z/2);
+        \coordinate (\name-farwest)  at (-\x/2, \Lasty/2,-\z/2);
+        \coordinate (\name-fareast)  at (\x/2, \Lasty/2,-\z/2);
+
+        \coordinate (\name-northeast) at (\name-north-|\name-east);
+        \coordinate (\name-northwest) at (\name-north-|\name-west);
+        \coordinate (\name-southeast) at (\name-south-|\name-east);
+        \coordinate (\name-southwest) at (\name-south-|\name-west);
+
+        \coordinate (\name-nearnortheast)   at (\x/2, \Lasty, \z/2);
+        \coordinate (\name-farnortheast)    at (\x/2, \Lasty,-\z/2);
+        \coordinate (\name-nearsoutheast)   at (-\x/2,0, \z/2);
+        \coordinate (\name-farsoutheast)    at (-\x/2,0,-\z/2);
+
+        \coordinate (\name-nearsouth)       at (0, 0, \z/2);
+        \coordinate (\name-nearnorth)        at (0, \Lasty, \z/2);
+
+        \coordinate (\name-nearnorthwest)   at (-\x/2, \Lasty, \z/2);
+        \coordinate (\name-farnorthwest)    at (-\x/2, \Lasty,-\z/2);
+        \coordinate (\name-nearsouthwest)   at (\x/2,0, \z/2);
+        \coordinate (\name-farsouthwest)    at (\x/2,0,-\z/2);
+    },
+    /block/.search also={/tikz},
+    /block/.cd,
+    width/.store        in=\cubex,
+    height/.store       in=\cubey,
+    depth/.store        in=\cubez,
+    scale/.store        in=\scale,
+    xlabel/.store       in=\xlabels,
+    ylabel/.store       in=\boxlabels,
+    zlabel/.store       in=\zlabels,
+    caption/.store      in=\caption,
+    name/.store         in=\name,
+    fill/.store         in=\fill,
+    bandfill/.store     in=\bandfill,
+    opacity/.store      in=\opacity,
+    bandopacity/.store  in=\bandopacity,
+    fill={rgb:red,5;green,5;blue,5;white,15},
+    bandfill={rgb:red,5;green,5;blue,5;white,5},
+    opacity=0.4,
+    bandopacity=0.6,
+    width=2,
+    height=13,
+    depth=15,
+    scale=.2,
+    xlabel=,
+    ylabel={{"","","","","","","","","",""}},
+    zlabel=,
+    caption=,
+    name=,
+}

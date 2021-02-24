@@ -1,0 +1,122 @@
+\documentclass[border=8pt, multi, tikz]{standalone}
+%\usepackage{blocks}
+\usepackage{import}
+\subimport{../../layers/}{init}
+\usetikzlibrary{positioning, calc}
+
+\def\ConvColor{rgb:yellow,5;red,2.5;white,5}
+\def\ConvReluColor{rgb:yellow,5;red,5;white,5}
+\def\PoolColor{rgb:red,1;black,0.3}
+\def\UnpoolColor{rgb:blue,2;green,1;black,0.3}
+\def\ConcatColor{rgb:blue,5;red,2.5;white,5}
+\def\FcReluColor{rgb:blue,5;red,5;white,4}
+\def\SoftmaxColor{rgb:magenta,5;black,7}
+\def\InceptionColor{rgb:blue,1;green,;5white,1}
+\def\GAPColor{rgb:black,5;white,1}
+\def\DenseColor{rgb:blue,5;black,2}
+
+
+\newcommand{\copymidarrow}{\tikz \draw[-Stealth,line width =0.8mm,draw={rgb:blue,4;red,1;green,1;black,3}] (-0.3,0) -- ++(0.3,0);}
+
+\newcommand{\gettikzxy}[3]{%
+  \tikz@scan@one@point\pgfutil@firstofone#1\relax
+  \edef#2{\the\pgf@x}%
+  \edef#3{\the\pgf@y}%
+}
+
+\begin{document}
+\begin{tikzpicture}
+ \tikzstyle{connection}=[ultra thick,every node/.style={sloped,allow upside down},draw=\edgecolor,opacity=0.7]
+ \tikzstyle{copyconnection}=[ultra thick,every node/.style={sloped,allow upside down},draw={rgb:blue,4;red,1;green,1;black,3},opacity=0.7]
+ \tikzstyle{dashedconnection}==[ultra thick,dashed,every node/.style={sloped,allow upside down},draw=\edgecolor,opacity=0.7]
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ %% Draw Encoder
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ %% input time series
+ \pic[shift={(0,0,0)}] at (0,0,0) {VerticallyStackedBox={name=cr_end,%
+    caption=Multivariate time series,%
+    fill=\UnpoolColor,height={3},width=3,depth=40}};
+
+ \pic[shift={(0,0.7,0)}] at (cr_end-north) {VerticallyStackedBox={name=cr1,%
+    fill=\UnpoolColor,height={3,3},width=3,depth=40}};
+
+ \draw [dashed] (cr_end-nearnorth) -- (cr1-nearsouth);
+
+ %% mask layer
+ \pic[shift={(2.5,0,0)}] at (cr1-southeast) {VerticallyStackedBox={name=mask,caption=Mask,%
+    fill=\PoolColor,height={3},%
+    width=3,depth=20}};
+
+ \draw [connection]  (cr1-southeast) + (0,0.3,0)  -- node {\midarrow} (mask-west);
+
+ %% inception module for 1st channel
+ \pic[shift={(6,2.5,0)}] at (mask-west) {VerticallyStackedBox={name=inc1,%
+    caption=Inception module,fill=\InceptionColor,%
+    height={10},width=7,depth=30}};
+
+ \path (mask-east) -- (mask-west-|inc1-west) coordinate[pos=0.3] (maskin1-mid);
+ \draw[connection](mask-east)--node{\midarrow}(maskin1-mid)--node{\midarrow}(maskin1-mid|-inc1-west)--node{\midarrow}(inc1-west);
+
+ %% inception module for last channel
+ \pic[shift={(6,-4,0)}] at (mask-west) {VerticallyStackedBox={name=inc_final,%
+    caption=Inception module,fill=\InceptionColor,%
+    height={10},width=7,depth=30}};
+
+ \path (mask-east) -- (mask-west-|inc_final-west) coordinate[pos=0.3] (maskinF-mid);
+ \draw[connection](mask-east)--node{\midarrow}(maskinF-mid)--node{\midarrow}(maskinF-mid|-inc_final-west)--node{\midarrow}(inc_final-west);
+
+ %% dotted line for intermediate channels
+ \draw [dashed] (inc1-south) -- coordinate[midway](m) (inc_final-north);
+ % \draw (m) circle (2pt);
+ \path (m) + (-2,-0.7) coordinate (channel_text);
+ \node[text width=3cm] at (channel_text) {One channel with Inception modules for each input};
+
+ %% model depth
+ \pic[shift={(3,0,0)}] at (inc1-southeast) {VerticallyStackedBox={name=inc1F,%
+    caption=Inception module,fill=\InceptionColor,%
+    height={10},width=7,depth=30}};
+
+ \pic[shift={(3,0,0)}] at (inc_final-southeast) {VerticallyStackedBox={name=inc_finalF,%
+    caption=Inception module,fill=\InceptionColor,%
+    height={10},width=7,depth=30}};
+
+ \draw [dashedconnection] (inc1-east) -- node {\midarrow} (inc1F-west);
+ \draw [dashedconnection] (inc_final-east) -- node {\midarrow} (inc_finalF-west);
+
+ \pic[shift={(1.7,-0.3,0)}] at (inc1F-east) {VerticallyStackedBox={name=conv1,%
+    caption=Bottleneck,fill=\SoftmaxColor,%
+    height={3},width=3,depth=3}};
+
+ \pic[shift={(1.7,-0.3,0)}] at (inc_finalF-east) {VerticallyStackedBox={name=conv1F,%
+    caption=Bottleneck,fill=\SoftmaxColor,%
+    height={3},width=3,depth=3}};
+
+ \draw [connection] (inc1F-east) -- node {\midarrow} (conv1-west);
+ \draw [connection] (inc_finalF-east) -- node {\midarrow} (conv1F-west);
+
+ %% final part
+ \pic[shift={(14.5,0,0)}] at (mask-southeast) {VerticallyStackedBox={name=mask_gap,caption=Mask,%
+    fill=\PoolColor,height={3},%
+    width=3,depth=20}};
+
+ \path (conv1F-east) -- (mask_gap-west|-conv1F-east) coordinate[pos=0.4] (mask2-mid);
+ \draw[connection](conv1F-east)--node{\midarrow}(mask2-mid)--node{\midarrow}(mask2-mid|-mask_gap-west)--node{\midarrow}(mask_gap-west);
+ \path (conv1-east) -- (mask_gap-west|-conv1-east) coordinate[pos=0.4] (mask2-mid);
+ \draw[connection](conv1-east)--node{\midarrow}(mask2-mid)--node{\midarrow}(mask2-mid|-mask_gap-west)--node{\midarrow}(mask_gap-west);
+
+ \path (mask_gap-west) + (-2,0.4) coordinate (channel_text);
+ \node[text width=3cm, rotate=90] at (channel_text) {\bf Concatenate};
+
+ \pic[shift={(1,-2,0)}] at (mask_gap-east) {VerticallyStackedBox={name=gap,caption=GAP,%
+    fill=\GAPColor,height={20},%
+    width=3,depth=3}};
+ \draw [connection](mask_gap-east) -- node {\midarrow} (gap-west);
+
+ \pic[shift={(2.2,-1,0)}] at (gap-east) {VerticallyStackedBox={name=dense,caption=Densely connected layers,%
+    fill=\DenseColor,height={10},width=13,depth=3}};
+\draw [connection] (gap-east) --node {\midarrow} (dense-west);
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end{tikzpicture}
+\end{document}
