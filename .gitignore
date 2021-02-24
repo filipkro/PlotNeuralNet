@@ -1,6 +1,7 @@
 *.aux
 *.log
 *.gz
+*.xdv
 
 __pycache__
 books
